@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="google-site-verification" content="-uZHm8AUDAmSwKTke81VW3xPlRJEYMmlE7tCSMMMEq0" />
+<meta name="google-site-verification" content="IfXi5MoE4fDKJjD9_vKVC_X2q1N1Lk8KCJ0C5UFMwxQ" />
+  <title>Daily Finance | Personal Budget & Expense Tracker App</title>
+
+<meta name="description" content="Securely track your daily income and expenses. This mobile-friendly Personal Budgeting and Expense Tracker helps you achieve financial autonomy and manage your money better. Data is saved locally in your browser.">
+
+<link rel="canonical" href="https://dailyfinances.netlify.app/" />
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  :root{
+    --primary:#0b5ed7; /* deep blue */
+    --accent:#3b82f6;
+    --bg-light:#f7fafc;
+    --bg-dark:#0f1724;
+    --card-light:#ffffff;
+    --card-dark:#0b1220;
+    --text-light:#0b1224;
+    --text-dark:#e6eef8;
+    --muted:#6b7280;
+    --success:#10b981;
+    --danger:#ef4444;
+    --warning:#f59e0b;
+    --radius:12px;
+    --border-color: rgba(15, 23, 42, 0.06); /* Default light mode border */
+  }
+  [data-theme="dark"]{
+    --bg:var(--bg-dark);
+    --card:var(--card-dark);
+    --text:var(--text-dark);
+    --border-color: rgba(255, 255, 255, 0.1);
+  }
+  [data-theme="light"]{
+    --bg:var(--bg-light);
+    --card:var(--card-light);
+    --text:var(--text-light);
+  }
+
+  *{box-sizing:border-box;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);transition:background .25s,color .25s;}
+  header{
+    position:sticky; top:0; z-index:20;
+    background:linear-gradient(90deg,var(--primary),var(--accent));
+    color:#fff; padding:14px 18px; display:flex; align-items:center; gap:12px; box-shadow:0 6px 18px rgba(11,78,203,0.12);
+    border-bottom-left-radius:0; border-bottom-right-radius:0;
+  }
+  .logo{
+    display:flex; align-items:center; gap:10px;
+    max-width: 70%;
+  }
+  .logo svg{width:36px;height:36px;flex:0 0 36px;border-radius:8px;background:rgba(255,255,255,0.08); padding:4px;}
+  
+  /* SEO Improvement 3: H1 styling for semantic correctness */
+  .logo h1 { 
+    margin: 0; 
+    font-weight:700; 
+    font-size:1.1rem; /* Match original span size */
+    color: #fff; /* Ensure H1 stays white in header */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  
+  .container{max-width:1100px;margin:18px auto;padding:0 14px 80px;}
+  .top-actions{display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap;}
+  .theme-toggle{background:var(--card);border:none;padding:8px 10px;border-radius:999px;cursor:pointer;box-shadow:0 3px 10px rgba(2,6,23,0.06);}
+  form{background:var(--card);padding:14px;border-radius:var(--radius);box-shadow:0 4px 18px rgba(2,6,23,0.06);margin-bottom:16px;}
+  .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px;}
+  @media(max-width:880px){ .grid{grid-template-columns:1fr;} .top-actions{gap:8px;}}
+  .form-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media(max-width:520px){ .form-row{grid-template-columns:1fr;} }
+  input[type="text"], input[type="number"], input[type="date"], select, button{
+    padding:10px 12px; font-size:0.95rem; border-radius:8px; border:1px solid var(--border-color); width:100%;
+    background:transparent; color:inherit;
+  }
+  button.primary{background:var(--primary); color:#fff; border:none; cursor:pointer; font-weight: 600;}
+  button.ghost{background:transparent; border:1px solid var(--border-color); font-weight: 500;}
+  .flex{display:flex; gap:8px; align-items:center;}
+  .flex button{padding:10px 12px;}
+  .card{background:var(--card); padding:14px; border-radius:var(--radius); box-shadow:0 4px 12px rgba(2,6,23,0.04);}
+  .summary{display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; justify-content: space-between;}
+  .summary .stat{flex:1; min-width: 140px; text-align:left; padding:12px; border: 1px solid var(--border-color);}
+  /* H3s in the summary section serve as important sub-headings */
+  .stat h3{margin:0;font-size:0.9rem;color:var(--muted); text-transform: uppercase;}
+  .stat p{margin:6px 0 0;font-weight:700;font-size:1.25rem;}
+  /* Expenses table */
+  .table-wrap{overflow:auto;border-radius:10px;}
+  table{width:100%;border-collapse:collapse;min-width:760px;}
+  th, td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border-color);}
+  th{background:var(--primary); color:#fff; position:relative; font-weight:700;}
+  .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-size:0.8rem; font-weight:600;}
+  .badge.income{background:rgba(16,185,129,0.12); color:var(--success); border:1px solid rgba(16,185,129,0.18);}
+  .badge.expense{background:rgba(239,68,68,0.08); color:var(--danger); border:1px solid rgba(239,68,68,0.12);}
+  .actions button{margin-right:8px;padding:6px 10px;border-radius:6px;border:1px solid var(--border-color);cursor:pointer;background:transparent;}
+  .muted{color:var(--muted);font-size:0.9rem;}
+  footer{margin-top:30px;padding:14px;text-align:center;color:var(--muted); border-top: 1px solid var(--border-color);}
+
+  /* small UI tweaks */
+  .small{font-size:0.85rem;}
+  .charts{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:760px){ .charts{grid-template-columns:1fr;} }
+
+  /* Custom Message Box */
+  #modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7); z-index: 1000;
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  #confirm-modal {
+    background: var(--card); color: var(--text); padding: 20px;
+    border-radius: var(--radius); width: 90%; max-width: 400px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+  #confirm-modal h4 { margin-top: 0; color: var(--primary); }
+  #modal-buttons {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;
+  }
+  #modal-buttons button { width: auto; padding: 8px 15px; }
+  #modal-buttons .confirm { background: var(--danger); color: white; border: none; }
+
+  /* New status card styling */
+  .stat-status {
+    border: none !important;
+    text-align: center !important;
+    padding: 18px 12px;
+  }
+  .stat-status h3 {
+    font-size: 1.0rem;
+    color: var(--text);
+  }
+  .stat-status p {
+    font-size: 1.5rem;
+    font-weight: 900;
+  }
+  .status-good { background: var(--success); color: #fff; }
+  .status-moderate { background: var(--warning); color: var(--text-dark); }
+  .status-poor { background: var(--danger); color: #fff; }
+  
+  /* Loading Indicator */
+  #loading-indicator {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 255, 255, 0.8); z-index: 999;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; font-weight: 600; color: var(--primary);
+  }
+  
+  /* Ad-specific CSS for centering */
+  .ad-container {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0; /* Add vertical spacing */
+  }
+</style>
+<script
+  type="text/javascript"
+  src="//pl28178514.effectivegatecpm.com/c5/6c/63/c56c63e4f6051c228446a22d61579566.js"
+></script>
+</head>
+<body data-theme="light">
+
+<div id="loading-indicator" style="display: none;">
+  <p>Loading Data...</p>
+</div>
+
+<div id="modal-overlay">
+  <div id="confirm-modal">
+    <h4 id="modal-title">Confirm Action</h4>
+    <p id="modal-message">Are you sure you want to proceed?</p>
+    <div id="modal-buttons">
+      <button id="modal-cancel" class="ghost">Cancel</button>
+      <button id="modal-confirm" class="confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo" aria-hidden="true">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="logo">
+      <rect x="2" y="2" width="44" height="44" rx="10" fill="white" opacity="0.06"/>
+      <path d="M14 32c3-4 9-6 14-6" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M14 24c3-4 9-6 14-6" stroke="#CDE4FF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="36" cy="14" r="6" fill="#fff" opacity="0.12"/>
+      <path d="M33.5 15.5L38.5 12.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+    <h1 title="Daily Finance">Daily Finance</h1>
+  </div>
+
+  <div style="margin-left:auto; display:flex; gap:10px; align-items:center;">
+    <button class="theme-toggle" id="theme-btn" title="Toggle theme">🌓</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="top-actions">
+    <p class="muted small" style="margin:0;">
+      Financial autonomy at your fingertips. Data is stored securely in your browser's Local Storage.
+    </p>
+    <div class="flex">
+      <button id="export-csv" class="ghost small">Export CSV</button>
+      <button id="clear-all" class="ghost small">Clear All Data</button>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="card stat">
+      <h3>Net Worth (Overall)</h3>
+      <p id="net-worth">₹0.00</p>
+    </div>
+    <div class="card stat">
+      <h3>Total Income</h3>
+      <p id="total-income">₹0.00</p>
+    </div>
+    <div class="card stat">
+      <h3>Total Expense</h3>
+      <p id="total-expense">₹0.00</p>
+    </div>
+    <div id="savings-rate-card" class="card stat stat-status status-good">
+      <h3>Monthly Savings Rate</h3>
+      <p id="savings-rate">0%</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <form id="tx-form" class="card" autocomplete="off">
+      <h3 style="margin-top:0;">Record Transaction</h3>
+      <div class="form-row">
+        <select id="tx-type" required>
+          <option value="expense">Expense (Outflow)</option>
+          <option value="income">Income (Inflow)</option>
+        </select>
+        <input id="amount" type="number" placeholder="Amount (₹)" step="0.01" required />
+      </div>
+
+      <div class="form-row" style="margin-top:8px;">
+        <select id="category" required>
+          <option value="">Loading Categories...</option>
+        </select>
+        <input id="description" type="text" placeholder="Description / Vendor" />
+      </div>
+
+      <div class="form-row" style="margin-top:8px;">
+        <input id="date" type="date" required />
+        <select id="recurring">
+          <option value="None">Frequency: None</option>
+          <option value="Daily">Daily</option>
+          <option value="Weekly">Weekly</option>
+          <option value="Monthly">Monthly</option>
+        </select>
+      </div>
+
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button type="submit" class="primary">Commit Transaction</button>
+        <button type="button" id="cancel-edit" class="ghost">Cancel Edit</button>
+      </div>
+    </form>
+    
+    <div>
+      <div class="ad-container">
+        <script type="text/javascript">
+          atOptions = {
+            'key' : 'a48429d84bca3b4ad0e09697900678e8',
+            'format' : 'iframe',
+            'height' : 250,
+            'width' : 300,
+            'params' : {}
+          };
+        </script>
+        <script
+          type="text/javascript"
+          src="//www.highperformanceformat.com/a48429d84bca3b4ad0e09697900678e8/invoke.js"
+        ></script>
+      </div>
+      <form id="category-form" class="card small">
+        <h3 style="margin:0 0 8px 0;">Category Management</h3>
+        <div style="display:flex; gap:8px;">
+          <input id="new-category" type="text" placeholder="Add New Category" />
+          <button type="submit" class="primary">Add</button>
+        </div>
+      </form>
+      
+      <div class="charts" style="margin-top:14px;">
+        <div class="card">
+          <h3 style="margin-top:0;">Expense Allocation</h3>
+          <canvas id="expense-chart"></canvas>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">Income Distribution</h3>
+          <canvas id="income-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="ad-container">
+    <script
+      async="async"
+      data-cfasync="false"
+      src="//pl28178518.effectivegatecpm.com/bdf8c5593cc47e0bb7bd6aab36ee2ade/invoke.js"
+    ></script>
+    <div id="container-bdf8c5593cc47e0bb7bd6aab36ee2ade"></div>
+  </div>
+  <div class="card" style="margin-top:8px;">
+    <h3 style="margin-top:0;">Transaction Register</h3>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+      <input id="search" type="text" placeholder="Search Description/Category" style="min-width:180px;" />
+      <select id="filter-type">
+        <option value="">All Types</option>
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+      </select>
+      <select id="filter-category">
+        <option value="">All Categories</option>
+      </select>
+      <input id="from" type="date" title="Filter from start date" />
+      <input id="to" type="date" title="Filter to end date" />
+      <button id="view-month" class="primary">View This Month</button>
+      <button id="apply-filter" class="ghost">Apply Filters</button>
+      <button id="reset-filter" class="ghost">Reset Filters</button>
+    </div>
+
+    <div class="table-wrap card" style="padding:0;">
+      <table id="tx-table" role="grid" aria-label="Transactions register">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Amount (₹)</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Date</th>
+            <th>Frequency</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  
+  <footer>
+    Created by Arpit Dev | Daily Finance
+  </footer>
+</div>
+
+<script>
+  // --- Local Storage Keys ---
+  const TXN_KEY = 'df_transactions';
+  const CAT_KEY = 'df_categories';
+
+  // --- App State ---
+  let transactions = [];
+  let categories = [];
+  let editingTxId = null;
+
+  // --- Element References ---
+  const loadingIndicator = document.getElementById('loading-indicator');
+  const txForm = document.getElementById('tx-form');
+  const txType = document.getElementById('tx-type');
+  const amountInput = document.getElementById('amount');
+  const categorySelect = document.getElementById('category');
+  const descriptionInput = document.getElementById('description');
+  const dateInput = document.getElementById('date');
+  const recurringSelect = document.getElementById('recurring');
+  const categoryForm = document.getElementById('category-form');
+  const newCategoryInput = document.getElementById('new-category');
+  const txTableBody = document.querySelector('#tx-table tbody');
+  const netWorthEl = document.getElementById('net-worth');
+  const totalIncomeEl = document.getElementById('total-income');
+  const totalExpenseEl = document.getElementById('total-expense');
+  const savingsRateEl = document.getElementById('savings-rate');
+  const savingsRateCard = document.getElementById('savings-rate-card');
+  const filterCategory = document.getElementById('filter-category');
+  const searchInput = document.getElementById('search');
+  const filterType = document.getElementById('filter-type');
+  const fromInput = document.getElementById('from');
+  const toInput = document.getElementById('to');
+  const applyFilterBtn = document.getElementById('apply-filter');
+  const resetFilterBtn = document.getElementById('reset-filter');
+  const viewMonthBtn = document.getElementById('view-month');
+  const exportCSVBtn = document.getElementById('export-csv');
+  const clearAllBtn = document.getElementById('clear-all');
+  const cancelEditBtn = document.getElementById('cancel-edit');
+  const themeBtn = document.getElementById('theme-btn');
+
+  let expenseChart = null, incomeChart = null;
+  
+  // --- Local Storage CRUD Helpers ---
+
+  function loadTransactions() {
+    try {
+      const stored = localStorage.getItem(TXN_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.error("Error loading transactions from Local Storage:", e);
+      return [];
+    }
+  }
+
+  function saveTransactions(txns) {
+    localStorage.setItem(TXN_KEY, JSON.stringify(txns));
+    transactions = txns; // Update local state immediately
+    // Re-render UI after saving
+    renderTable();
+    updateSummary();
+    renderCharts();
+  }
+
+  function loadCategories() {
+    try {
+      const stored = localStorage.getItem(CAT_KEY);
+      const list = stored ? JSON.parse(stored) : [];
+      
+      if (list.length === 0) {
+          // Initialize default categories if not found
+          const defaultCats = ["Salary", "Food", "Travel", "Shopping", "Bills", "Other"];
+          saveCategories(defaultCats);
+          return defaultCats;
+      }
+      return list;
+    } catch (e) {
+      console.error("Error loading categories from Local Storage:", e);
+      return ["Salary", "Food", "Travel", "Shopping", "Bills", "Other"]; // Fallback
+    }
+  }
+
+  function saveCategories(cats) {
+    // Ensure categories are unique and valid strings before saving
+    const uniqueCats = [...new Set(cats.filter(c => typeof c === 'string' && c.trim() !== ''))];
+    localStorage.setItem(CAT_KEY, JSON.stringify(uniqueCats));
+    categories = uniqueCats; // Update local state immediately
+    updateCategoryOptions(); // Re-render category dropdowns
+  }
+
+  // --- Custom Modal Logic (Replaces alert/confirm) ---
+  let currentConfirmAction = null;
+  const modalOverlay = document.getElementById('modal-overlay');
+  const modalMessage = document.getElementById('modal-message');
+  const modalTitle = document.getElementById('modal-title');
+  const modalConfirmBtn = document.getElementById('modal-confirm');
+  const modalCancelBtn = document.getElementById('modal-cancel');
+
+  function showConfirm(title, message, onConfirmCallback) {
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+    currentConfirmAction = onConfirmCallback;
+    modalOverlay.style.display = 'flex';
+  }
+
+  modalConfirmBtn.addEventListener('click', () => {
+    if (currentConfirmAction) {
+      currentConfirmAction();
+    }
+    modalOverlay.style.display = 'none';
+    currentConfirmAction = null;
+  });
+
+  modalCancelBtn.addEventListener('click', () => {
+    modalOverlay.style.display = 'none';
+    currentConfirmAction = null;
+  });
+  // --- End Custom Modal Logic ---
+  
+  // --- Initialization ---
+
+  // Initialize UI elements like date input and hidden buttons
+  function initUI(){
+    dateInput.value = new Date().toISOString().slice(0,10);
+    cancelEditBtn.style.display = 'none';
+    // Remove user ID display since there's no auth
+    const userIdDisplay = document.getElementById('user-id-display');
+    if(userIdDisplay) userIdDisplay.remove();
+  }
+  
+  function initializeApp() {
+      // 1. Load data from Local Storage
+      transactions = loadTransactions();
+      categories = loadCategories();
+      
+      // 2. Initialize UI
+      initUI();
+      
+      // 3. Render UI components
+      updateCategoryOptions();
+      renderTable();
+      updateSummary();
+      renderCharts();
+      
+      // 4. Hide loading indicator (It's synchronous, so it's ready)
+      loadingIndicator.style.display = 'none';
+      console.log("App initialized with Local Storage data.");
+  }
+  
+  initializeApp();
+
+
+  // Updates the Category dropdowns (Form and Filter)
+  function updateCategoryOptions(){
+    categorySelect.innerHTML = '<option value="">Select Category</option>';
+    filterCategory.innerHTML = '<option value="">All Categories</option>';
+    
+    // Ensure all categories are strings and unique
+    const uniqueCategories = [...new Set(categories.filter(c => typeof c === 'string' && c.trim() !== ''))];
+
+    uniqueCategories.forEach(c=>{
+      const opt = document.createElement('option'); opt.value = c; opt.textContent = c; categorySelect.appendChild(opt);
+      const opt2 = document.createElement('option'); opt2.value = c; opt2.textContent = c; filterCategory.appendChild(opt2);
+    });
+  }
+
+  // ===== Theme Toggle ===== 
+  themeBtn.addEventListener('click', ()=>{
+    document.body.dataset.theme = document.body.dataset.theme === 'light' ? 'dark' : 'light';
+  });
+
+  // ===== Add / Edit transaction (Local Storage Write) =====
+  txForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const tx = {
+      type: txType.value, // 'income' or 'expense'
+      amount: parseFloat(amountInput.value) || 0,
+      category: categorySelect.value || 'Other',
+      description: descriptionInput.value || '',
+      date: dateInput.value, // YYYY-MM-DD
+      recurring: recurringSelect.value || 'None',
+      createdAt: new Date().toISOString()
+    };
+
+    let newTransactions = [...transactions];
+
+    if(editingTxId){
+      // Update existing transaction
+      const index = newTransactions.findIndex(t => t.id === editingTxId);
+      if (index !== -1) {
+          newTransactions[index] = { ...newTransactions[index], ...tx };
+          console.log("Transaction updated successfully.");
+      }
+      editingTxId = null;
+    } else {
+      // Add new transaction
+      // Use a timestamp + random ID for a unique identifier
+      tx.id = Date.now().toString() + Math.floor(Math.random() * 10000);
+      newTransactions.push(tx);
+      console.log("Transaction added successfully.");
+    }
+
+    saveTransactions(newTransactions); // Save to Local Storage and trigger re-render
+    
+    // Reset form and UI state
+    txForm.reset();
+    dateInput.value = new Date().toISOString().slice(0,10);
+    cancelEditBtn.style.display = 'none';
+  });
+
+  /* Cancel edit */
+  cancelEditBtn.addEventListener('click', ()=>{
+    editingTxId = null;
+    txForm.reset();
+    dateInput.value = new Date().toISOString().slice(0,10);
+    cancelEditBtn.style.display = 'none'; // Hide cancel button after reset
+  });
+
+  // ===== Add category (Local Storage Write) =====
+  categoryForm.addEventListener('submit', (e)=>{
+    e.preventDefault();
+
+    const val = newCategoryInput.value.trim();
+    if(val && !categories.includes(val)){
+      const newCategoriesList = [...categories, val];
+      saveCategories(newCategoriesList); // Save to Local Storage and trigger updateCategoryOptions
+      newCategoryInput.value = '';
+      console.log("Category added successfully.");
+    }
+  });
+
+  /* ===== Filter Utility ===== */
+  function getFilteredTransactions() {
+    const search = searchInput.value.trim().toLowerCase();
+    const fType = filterType.value;
+    const fCat = filterCategory.value;
+    const from = fromInput.value;
+    const to = toInput.value;
+
+    let filtered = transactions.filter(t=>{
+      if(fType && t.type !== fType) return false;
+      if(fCat && t.category !== fCat) return false;
+      if(search && !t.description.toLowerCase().includes(search) && !t.category.toLowerCase().includes(search)) return false;
+      if(from && t.date < from) return false;
+      if(to && t.date > to) return false;
+      return true;
+    });
+
+    // Sort by date (desc) and then by createdAt (desc) for stability
+    filtered.sort((a,b)=> b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+    return filtered;
+  }
+
+  /* ===== Render Table with filters (UI Update) ===== */
+  function renderTable(){
+    const filtered = getFilteredTransactions();
+    txTableBody.innerHTML = '';
+    if (filtered.length === 0) {
+        txTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--muted);">No transactions matching current filters.</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(t=>{
+      const txId = t.id;
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge ${t.type}">${t.type.charAt(0).toUpperCase() + t.type.slice(1)}</span></td>
+        <td>₹${t.amount && typeof t.amount === 'number' ? t.amount.toFixed(2) : '0.00'}</td>
+        <td>${t.category}</td>
+        <td class="muted small">${t.description || 'N/A'}</td>
+        <td>${t.date}</td>
+        <td>${t.recurring}</td>
+        <td class="actions">
+          <button class="small" data-id="${txId}" onclick="onEditTx('${txId}')">Edit</button>
+          <button class="small" data-id="${txId}" onclick="onDeleteTx('${txId}')">Delete</button>
+        </td>
+      `;
+      txTableBody.appendChild(tr);
+    });
+  }
+
+  /* Edit action - global function for inline onclick */
+  function onEditTx(id){
+    const t = transactions.find(x=>x.id===id);
+    if(!t) return;
+    
+    editingTxId = t.id;
+    txType.value = t.type;
+    amountInput.value = t.amount;
+    categorySelect.value = t.category;
+    descriptionInput.value = t.description;
+    dateInput.value = t.date;
+    recurringSelect.value = t.recurring;
+    window.scrollTo({top:0, behavior:'smooth'});
+    cancelEditBtn.style.display = 'inline-block'; // Show cancel button when editing
+  };
+  window.onEditTx = onEditTx; // Expose to global scope for onclick
+
+  /* Delete action - uses custom modal (Local Storage Delete) */
+  function onDeleteTx(id){
+    const t = transactions.find(x=>x.id===id);
+    if(!t) return;
+
+    showConfirm(
+      'Confirm Deletion',
+      `Proceeding will permanently remove transaction: ${t.category} (₹${t.amount && typeof t.amount === 'number' ? t.amount.toFixed(2) : '0.00'}). Confirm?`,
+      ()=>{
+        // Filter out the transaction to be deleted
+        const newTransactions = transactions.filter(tx => tx.id !== id);
+        saveTransactions(newTransactions); // Save to Local Storage and trigger re-render
+        console.log("Transaction deleted successfully.");
+      }
+    );
+  };
+  window.onDeleteTx = onDeleteTx; // Expose to global scope for onclick
+
+  /* ===== Summary (Local Calculation from State) ===== */
+  function updateSummary(){
+    // Filter out potential non-numeric amounts before reducing
+    const safeTxns = transactions.filter(t => t.amount && typeof t.amount === 'number');
+    
+    const totalIncome = safeTxns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const totalExpense = safeTxns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const netWorth = totalIncome - totalExpense;
+
+    netWorthEl.textContent = `₹${netWorth.toFixed(2)}`;
+    totalIncomeEl.textContent = `₹${totalIncome.toFixed(2)}`;
+    totalExpenseEl.textContent = `₹${totalExpense.toFixed(2)}`;
+
+    // --- Monthly Savings Rate ---
+    const today = new Date();
+    // Start of current month (YYYY-MM-DD)
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+    // End of current month (YYYY-MM-DD)
+    const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+    const monthlyData = safeTxns.filter(t => t.date >= currentMonthStart && t.date <= currentMonthEnd);
+    const monthlyIncome = monthlyData.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const monthlyExpense = monthlyData.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const monthlySavings = monthlyIncome - monthlyExpense;
+
+    let savingsRate = 0;
+    let statusClass = 'status-moderate'; // Default to moderate (neutral/no data)
+
+    if (monthlyIncome > 0) {
+      savingsRate = (monthlySavings / monthlyIncome) * 100;
+      if (savingsRate >= 30) {
+        statusClass = 'status-good'; // Excellent saving discipline
+      } else if (savingsRate > 0) {
+        statusClass = 'status-moderate'; // Positive savings
+      } else {
+        statusClass = 'status-poor'; // Negative savings / Overspending
+      }
+    } else if (monthlyExpense > 0) {
+       savingsRate = -100; // 100% negative if no income but expenses exist
+       statusClass = 'status-poor';
+    } else {
+       // If no income and no expense, keep default moderate status
+       savingsRate = 0;
+    }
+
+    savingsRateEl.textContent = `${savingsRate.toFixed(1)}%`;
+    // Update card background color based on status
+    savingsRateCard.className = `card stat stat-status ${statusClass}`;
+    savingsRateCard.querySelector('h3').textContent = `Savings Rate (${new Date().toLocaleDateString('en-US', { month: 'short' })})`;
+  }
+
+  /* ===== Charts (Local Render from State) ===== */
+  function renderCharts(){
+    const filtered = getFilteredTransactions(); // Render charts based on current filters
+    const expenseData = {};
+    const incomeData = {};
+
+    filtered.forEach(t=>{
+      // Use safe amount check
+      const amount = t.amount && typeof t.amount === 'number' ? t.amount : 0;
+      if(t.type==='expense') expenseData[t.category] = (expenseData[t.category]||0) + amount;
+      else incomeData[t.category] = (incomeData[t.category]||0) + amount;
+    });
+    const eLabels = Object.keys(expenseData);
+    const eValues = Object.values(expenseData);
+    const iLabels = Object.keys(incomeData);
+    const iValues = Object.values(incomeData);
+
+    // destroy old charts
+    if(expenseChart) expenseChart.destroy();
+    if(incomeChart) incomeChart.destroy();
+
+    // Color generator for consistent and attractive colors (Diverse)
+    const generateColors = (count) => {
+      const colors = [];
+      for(let i=0; i<count; i++) {
+        colors.push(`hsl(${(i * 137.5)%360}, 65%, 55%)`); // Golden Ratio color sequence
+      }
+      return colors;
+    };
+    
+    // Green Color Generator for Income Distribution
+    const generateGreenColors = (count) => {
+      const colors = [];
+      for(let i=0; i<count; i++) {
+        const hue = 120 + (i * 10) % 20; 
+        const saturation = 75 - (i * 5) % 15; 
+        const lightness = 45 + (i * 5) % 15; 
+        colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+      }
+      return colors;
+    };
+
+    const eCtx = document.getElementById('expense-chart').getContext('2d');
+    expenseChart = new Chart(eCtx, {
+      type: 'doughnut',
+      data: {
+        labels: eLabels,
+        datasets: [{ data: eValues, backgroundColor: generateColors(eLabels.length) }] 
+      },
+      options: {
+        responsive:true,
+        plugins:{
+          legend:{ position:'bottom' },
+          title: { display: true, text: `Total Expense: ₹${eValues.reduce((a,b)=>a+b,0).toFixed(2)}` }
+        }
+      }
+    });
+
+    const iCtx = document.getElementById('income-chart').getContext('2d');
+    incomeChart = new Chart(iCtx, {
+      type: 'doughnut',
+      data: {
+        labels: iLabels,
+        datasets: [{ data: iValues, backgroundColor: generateGreenColors(iLabels.length) }] 
+      },
+      options: {
+        responsive:true,
+        plugins:{
+          legend:{ position:'bottom' },
+          title: { display: true, text: `Total Income: ₹${iValues.reduce((a,b)=>a+b,0).toFixed(2)}` }
+      }
+    }
+    });
+  }
+
+  /* ===== Filters & Controls ===== */
+  applyFilterBtn.addEventListener('click', ()=>{
+    renderTable();
+    renderCharts(); // Re-render charts based on applied filters
+  });
+
+  resetFilterBtn.addEventListener('click', ()=>{
+    searchInput.value=''; filterType.value=''; filterCategory.value=''; fromInput.value=''; toInput.value='';
+    renderTable();
+    renderCharts();
+  });
+
+  // Feature: View This Month
+  viewMonthBtn.addEventListener('click', () => {
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+      fromInput.value = firstDay.toISOString().slice(0, 10);
+      toInput.value = lastDay.toISOString().slice(0, 10);
+
+      renderTable();
+      renderCharts();
+  });
+
+  /* ===== Export CSV (Uses current in-memory state) ===== */
+  exportCSVBtn.addEventListener('click', ()=>{
+    let csv = 'Type,Amount,Category,Description,Date,Recurring\n';
+    transactions.forEach(t=>{
+      // escape quotes and check for non-numeric amounts
+      const amount = t.amount && typeof t.amount === 'number' ? t.amount.toFixed(2) : '0.00';
+      const desc = (t.description||'').replace(/"/g,'""');
+      csv += `${t.type},${amount},${t.category},"${desc}",${t.date},${t.recurring}\n`;
+    });
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'financial_export.csv'; a.click();
+  });
+
+  /* ===== Clear all (Local Storage Reset) ===== */
+  clearAllBtn.addEventListener('click', ()=>{
+    showConfirm(
+      'PERMANENT DATA ERASURE',
+      'Warning: This action will completely wipe all transactions and reset categories in your Local Storage. Are you certain you wish to proceed?',
+      ()=>{
+        const defaultCategories = ["Salary", "Food", "Travel", "Shopping", "Bills", "Other"];
+        
+        saveTransactions([]); // Clear transactions
+        saveCategories(defaultCategories); // Reset categories
+        
+        console.log("All data cleared successfully and reset to default.");
+      }
+    );
+  });
+
+  /* ===== UI Helpers ===== */
+  // Show cancel button only when editing a transaction
+  txForm.addEventListener('change', ()=> {
+    if (editingTxId) cancelEditBtn.style.display = 'inline-block';
+  });
+  txForm.addEventListener('input', ()=> {
+    if (editingTxId) cancelEditBtn.style.display = 'inline-block';
+  });
+  
+  /* set focus improvements */
+  amountInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); descriptionInput.focus(); }
+  });
+</script>
+
+</body>
+</html>
